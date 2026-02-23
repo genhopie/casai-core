@@ -1,0 +1,24 @@
+{
+  "name": "caseai",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.12.3",
+  "scripts": {
+    "dev:up": "concurrently -k -n auth,market,worker,web -c cyan,magenta,yellow,green \"pnpm --filter @caseai/auth-api dev\" \"pnpm --filter @caseai/marketplace-api dev\" \"pnpm --filter @caseai/worker dev\" \"pnpm --filter @caseai/web dev\"",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev --name init",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "concurrently": "^9.1.0",
+    "eslint": "^9.15.0",
+    "prettier": "^3.4.1",
+    "prisma": "^6.2.1",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.2.1"
+  }
+}

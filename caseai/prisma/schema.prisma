@@ -1,0 +1,365 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum PlanType {
+  FREE
+  PRO
+  FIRM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum OwnerType {
+  USER
+  FIRM
+}
+
+enum ResetPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+  NONE
+}
+
+enum FirmRole {
+  ADMIN
+  MEMBER
+}
+
+enum SeatStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+enum GeoScopeLevel {
+  LOCAL
+  REGIONAL
+  NATIONAL
+  INTERNATIONAL
+}
+
+enum ListingStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BidPricingType {
+  FIXED
+  HOURLY
+}
+
+enum BidStatus {
+  ACTIVE
+  WITHDRAWN
+  ACCEPTED
+  REJECTED
+}
+
+enum MatchStatus {
+  NDA_PENDING
+  NDA_ACCEPTED
+  ACTIVE
+  CLOSED
+}
+
+enum ParticipantRole {
+  CLIENT
+  LAWYER
+  SYSTEM
+}
+
+model User {
+  id            String      @id @default(cuid())
+  email         String      @unique
+  password_hash String
+  created_at    DateTime    @default(now())
+  last_login_at DateTime?
+  status        UserStatus  @default(ACTIVE)
+
+  devices         Device[]
+  subscriptions   Subscription[]
+  firmUsers       FirmUser[]
+  lawyerProfile   LawyerProfile?
+  listings        CaseListing[]      @relation("ListingOwner")
+  bids            Bid[]              @relation("BidLawyer")
+  clientMatches   Match[]            @relation("MatchClient")
+  lawyerMatches   Match[]            @relation("MatchLawyer")
+  chatParticipants ChatParticipant[]
+  chatMessages    ChatMessage[]      @relation("MessageSender")
+  reviewsWritten  Review[]           @relation("ReviewAuthor")
+  reviewsReceived Review[]           @relation("ReviewTarget")
+  auditActions    AdminAuditLog[]    @relation("AuditActor")
+
+  @@index([status])
+}
+
+model Device {
+  id              String    @id @default(cuid())
+  user_id         String
+  device_id_hash  String
+  last_seen_at    DateTime  @default(now())
+  created_at      DateTime  @default(now())
+  revoked_at      DateTime?
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, device_id_hash])
+  @@index([user_id, revoked_at])
+}
+
+model Firm {
+  id         String     @id @default(cuid())
+  name       String
+  created_at DateTime   @default(now())
+
+  firmUsers      FirmUser[]
+  lawyerProfiles LawyerProfile[]
+  subscriptions  Subscription[]
+}
+
+model Subscription {
+  id                 String             @id @default(cuid())
+  user_id            String?
+  firm_id            String?
+  plan_type          PlanType
+  status             SubscriptionStatus
+  current_period_end DateTime
+  created_at         DateTime           @default(now())
+
+  user User? @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  firm Firm? @relation(fields: [firm_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, status])
+  @@index([firm_id, status])
+}
+
+model Entitlement {
+  id           String      @id @default(cuid())
+  owner_type   OwnerType
+  owner_id     String
+  key          String
+  value        String
+  reset_period ResetPeriod
+  updated_at   DateTime    @updatedAt
+
+  @@unique([owner_type, owner_id, key])
+  @@index([owner_type, owner_id])
+}
+
+model FirmUser {
+  id          String     @id @default(cuid())
+  firm_id     String
+  user_id     String
+  role        FirmRole
+  seat_status SeatStatus
+
+  firm Firm @relation(fields: [firm_id], references: [id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([firm_id, user_id])
+  @@index([user_id])
+}
+
+model LawyerProfile {
+  id                  String             @id @default(cuid())
+  user_id             String             @unique
+  firm_id             String?
+  jurisdictions       String[]
+  languages           String[]
+  practice_areas      String[]
+  verification_status VerificationStatus @default(PENDING)
+  rating_avg          Float              @default(0)
+  rating_count        Int                @default(0)
+
+  user User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  firm Firm? @relation(fields: [firm_id], references: [id], onDelete: SetNull)
+  verifications LawyerVerification[]
+
+  @@index([firm_id])
+  @@index([verification_status])
+}
+
+model LawyerVerification {
+  id           String             @id @default(cuid())
+  lawyer_id    String
+  jurisdiction String
+  bar_number   String
+  status       VerificationStatus
+  verified_at  DateTime?
+  expires_at   DateTime?
+
+  lawyer LawyerProfile @relation(fields: [lawyer_id], references: [id], onDelete: Cascade)
+
+  @@index([lawyer_id, status])
+}
+
+model CaseListing {
+  listing_id             String             @id @default(cuid())
+  owner_user_id          String
+  jurisdiction           String
+  case_type              String
+  languages              String[]
+  geo_scope_level        GeoScopeLevel
+  deadline_date          DateTime
+  budget_min             Decimal            @db.Decimal(12, 2)
+  budget_max             Decimal            @db.Decimal(12, 2)
+  currency               String
+  doc_volume_count       Int
+  doc_volume_pages_est   Int
+  anonym_summary         String
+  status                 ListingStatus      @default(DRAFT)
+  moderation_status      ModerationStatus   @default(PENDING)
+  created_at             DateTime           @default(now())
+
+  owner     User          @relation("ListingOwner", fields: [owner_user_id], references: [id], onDelete: Cascade)
+  bids      Bid[]
+  matches   Match[]
+  threads   ChatThread[]
+
+  @@index([status, moderation_status])
+  @@index([jurisdiction, case_type])
+  @@index([owner_user_id, created_at])
+}
+
+model Bid {
+  bid_id          String          @id @default(cuid())
+  listing_id      String
+  lawyer_user_id  String
+  pricing_type    BidPricingType
+  price_amount    Decimal         @db.Decimal(12, 2)
+  currency        String
+  estimate_text   String
+  conditions_text String
+  created_at      DateTime        @default(now())
+  status          BidStatus       @default(ACTIVE)
+
+  listing CaseListing @relation(fields: [listing_id], references: [listing_id], onDelete: Cascade)
+  lawyer  User        @relation("BidLawyer", fields: [lawyer_user_id], references: [id], onDelete: Cascade)
+
+  @@index([listing_id, status])
+  @@index([lawyer_user_id, status])
+}
+
+model Match {
+  match_id        String      @id @default(cuid())
+  listing_id      String
+  client_user_id  String
+  lawyer_user_id  String
+  nda_required    Boolean     @default(true)
+  nda_accepted_at DateTime?
+  status          MatchStatus @default(NDA_PENDING)
+  created_at      DateTime    @default(now())
+
+  listing CaseListing @relation(fields: [listing_id], references: [listing_id], onDelete: Cascade)
+  client  User        @relation("MatchClient", fields: [client_user_id], references: [id], onDelete: Cascade)
+  lawyer  User        @relation("MatchLawyer", fields: [lawyer_user_id], references: [id], onDelete: Cascade)
+  threads ChatThread[]
+  reviews Review[]
+
+  @@index([client_user_id, status])
+  @@index([lawyer_user_id, status])
+}
+
+model ChatThread {
+  thread_id    String    @id @default(cuid())
+  listing_id   String?
+  match_id     String?
+  created_at   DateTime  @default(now())
+
+  listing      CaseListing?      @relation(fields: [listing_id], references: [listing_id], onDelete: Cascade)
+  match        Match?            @relation(fields: [match_id], references: [match_id], onDelete: Cascade)
+  participants ChatParticipant[]
+  messages     ChatMessage[]
+
+  @@index([listing_id])
+  @@index([match_id])
+}
+
+model ChatParticipant {
+  id        String          @id @default(cuid())
+  thread_id String
+  user_id   String
+  role      ParticipantRole
+
+  thread ChatThread @relation(fields: [thread_id], references: [thread_id], onDelete: Cascade)
+  user   User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([thread_id, user_id])
+  @@index([user_id])
+}
+
+model ChatMessage {
+  message_id      String    @id @default(cuid())
+  thread_id       String
+  sender_user_id  String
+  ciphertext      String
+  created_at      DateTime  @default(now())
+
+  thread ChatThread @relation(fields: [thread_id], references: [thread_id], onDelete: Cascade)
+  sender User       @relation("MessageSender", fields: [sender_user_id], references: [id], onDelete: Cascade)
+
+  @@index([thread_id, created_at])
+}
+
+model Review {
+  review_id          String            @id @default(cuid())
+  match_id           String
+  reviewer_user_id   String
+  reviewed_user_id   String
+  scores             Json
+  comment            String
+  created_at         DateTime          @default(now())
+  moderation_status  ModerationStatus  @default(PENDING)
+
+  match    Match @relation(fields: [match_id], references: [match_id], onDelete: Cascade)
+  reviewer User  @relation("ReviewAuthor", fields: [reviewer_user_id], references: [id], onDelete: Cascade)
+  reviewed User  @relation("ReviewTarget", fields: [reviewed_user_id], references: [id], onDelete: Cascade)
+
+  @@index([match_id])
+  @@index([reviewed_user_id, moderation_status])
+}
+
+model AdminAuditLog {
+  id           String   @id @default(cuid())
+  actor_user_id String
+  action_type  String
+  target_type  String
+  target_id    String
+  created_at   DateTime @default(now())
+  metadata     Json
+
+  actor User @relation("AuditActor", fields: [actor_user_id], references: [id], onDelete: Cascade)
+
+  @@index([action_type, created_at])
+  @@index([target_type, target_id])
+}

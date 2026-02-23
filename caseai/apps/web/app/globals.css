@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  @apply bg-slate-950 text-slate-100;
+}
+
+a {
+  @apply text-indigo-400 hover:text-indigo-300;
+}
+
+input,
+textarea,
+select,
+button {
+  @apply rounded border border-slate-700 bg-slate-900 text-slate-100;
+}

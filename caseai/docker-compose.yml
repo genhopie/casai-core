@@ -1,0 +1,48 @@
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    command: sleep infinity
+    ports:
+      - "3000:3000"
+      - "3101:3101"
+      - "3102:3102"
+    environment:
+      DATABASE_URL: postgresql://caseai:caseai@postgres:5432/caseai
+      REDIS_URL: redis://redis:6379
+      JWT_ACCESS_SECRET: change-me-access
+      JWT_REFRESH_SECRET: change-me-refresh
+      JWT_OFFLINE_SECRET: change-me-offline
+      MAX_DEVICES_PER_ACCOUNT: 3
+      OFFLINE_GRACE_DAYS: 14
+      NEXT_PUBLIC_AUTH_API_URL: http://localhost:3101
+      NEXT_PUBLIC_MARKETPLACE_API_URL: http://localhost:3102
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: caseai
+      POSTGRES_USER: caseai
+      POSTGRES_PASSWORD: caseai
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:

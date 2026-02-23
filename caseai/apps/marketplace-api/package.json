@@ -1,0 +1,33 @@
+{
+  "name": "@caseai/marketplace-api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "@caseai/config": "workspace:*",
+    "@nestjs/common": "^11.0.2",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.0.2",
+    "@nestjs/jwt": "^11.0.0",
+    "@nestjs/passport": "^11.0.3",
+    "@nestjs/platform-express": "^11.0.2",
+    "@nestjs/throttler": "^6.2.1",
+    "@prisma/client": "^6.2.1",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@types/passport-jwt": "^4.0.1",
+    "typescript": "^5.7.2",
+    "tsx": "^4.19.2"
+  }
+}

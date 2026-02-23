@@ -1,0 +1,16 @@
+{
+  "name": "@caseai/local-vault",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "@caseai/config": "workspace:*",
+    "idb": "^8.0.2"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --ext .ts"
+  }
+}
